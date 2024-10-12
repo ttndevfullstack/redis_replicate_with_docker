@@ -1,0 +1,66 @@
+# ==============================================================================
+# Redis Strategy with One Master And One Slave
+# ==============================================================================
+services:
+  # ==============================================================================
+  # Redis Master
+  # ==============================================================================
+  redis_master:
+    image: redis
+    container_name: redis_master
+    volumes:
+      - ./app/master/data:/data
+      - ./app/master/conf:/usr/local/etc/redis
+    ports:
+      - "6379:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    networks: 
+      - redis_replicate_network
+
+  # ==============================================================================
+  # Redis Slave
+  # ==============================================================================
+  redis_slave:
+    image: redis
+    container_name: redis_slave
+    volumes:
+      - ./app/slave/data:/data
+      - ./app/slave/conf:/usr/local/etc/redis
+    ports:
+      - "6380:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    depends_on:
+      - redis_master
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    networks: 
+      - redis_replicate_network
+
+  # ==============================================================================
+  # Redis Sentinel
+  # ==============================================================================
+  redis_sentinel:
+    image: redis
+    container_name: redis_sentinel
+    volumes:
+      - ./app/sentinel/conf:/usr/local/etc/redis
+    ports:
+      - "26379:26379"
+    command: redis-sentinel /usr/local/etc/redis/redis.conf
+    depends_on:
+      - redis_master
+      - redis_slave
+    networks:
+      - redis_replicate_network
+
+
+# ============================================================================== 
+# Network Configuration 
+# ============================================================================== 
+networks: 
+  redis_replicate_network: 
+    driver: bridge 
